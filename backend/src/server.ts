@@ -16,11 +16,32 @@ import insightsRoutes from './routes/insights';
 const app: Express = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
-}));
+// Middleware - robust CORS origin handling
+const rawOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map(s => s.trim()).filter(Boolean).map(o => o.replace(/\/$/, ''));
+
+function originIsAllowed(origin: string | undefined) {
+  if (!origin) return false;
+  // normalize incoming origin (strip trailing slash)
+  const norm = origin.replace(/\/$/, '');
+  return rawOrigins.includes(norm);
+}
+
+const corsOptions: cors.CorsOptionsDelegate = (req, callback) => {
+  const origin = (req as any).headers?.origin as string | undefined;
+  if (!origin) {
+    return callback(null, { origin: true, credentials: true });
+  }
+  if (originIsAllowed(origin)) {
+    const norm = origin.replace(/\/$/, '');
+    const matched = rawOrigins.find(o => o === norm) || norm;
+    return callback(null, { origin: matched, credentials: true });
+  }
+  return callback(null, { origin: false });
+};
+
+// Apply CORS and ensure preflight requests are handled
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
