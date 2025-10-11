@@ -16,7 +16,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  outputFileTracingRoot: path.resolve(__dirname, '../../'),
+  // Ensure output file tracing root is the project directory.
+  // Using '../../' causes Next to trace files outside the project which can
+  // produce duplicated paths on Vercel (e.g. /vercel/path0/vercel/path0/.next/...).
+  outputFileTracingRoot: path.resolve(__dirname),
   typescript: {
     ignoreBuildErrors: true,
   },
