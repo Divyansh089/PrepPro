@@ -35,6 +35,7 @@ import {
   Calendar,
   AlertTriangle
 } from "lucide-react";
+import { API_BASE_URL } from '@/lib/api/base';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -128,7 +129,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const token = getAuthToken();
-      const response = await fetch('http://localhost:5000/api/auth/complete-profile', {
+  const response = await fetch(`${API_BASE_URL}/auth/complete-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -162,7 +163,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const token = getAuthToken();
-      const response = await fetch('http://localhost:5000/api/auth/change-password', {
+  const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -474,7 +475,7 @@ export default function SettingsPage() {
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Email Notifications</h3>
               <div className="space-y-4">
-                {Object.entries(notificationSettings).map(([key, value]) => (
+                {(Object.entries(notificationSettings) as [string, boolean][]).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
                     <div>
                       <Label className="text-base">
@@ -489,8 +490,8 @@ export default function SettingsPage() {
                       </p>
                     </div>
                     <Switch 
-                      checked={value}
-                      onCheckedChange={(checked) => setNotificationSettings({...notificationSettings, [key]: checked})}
+                      checked={Boolean(value)}
+                      onCheckedChange={(checked: boolean) => setNotificationSettings(prev => ({...prev, [key]: checked as any}))}
                     />
                   </div>
                 ))}
@@ -503,7 +504,7 @@ export default function SettingsPage() {
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Profile Visibility</h3>
               <div className="space-y-4">
-                {Object.entries(privacySettings).map(([key, value]) => (
+                {(Object.entries(privacySettings) as [string, string | boolean][]).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
                     <div>
                       <Label className="text-base">
@@ -519,8 +520,8 @@ export default function SettingsPage() {
                     </div>
                     {key === 'profileVisibility' ? (
                       <select 
-                        value={value}
-                        onChange={(e) => setPrivacySettings({...privacySettings, [key]: e.target.value})}
+                        value={String(value)}
+                        onChange={(e) => setPrivacySettings(prev => ({...prev, [key]: e.target.value as any}))}
                         className="px-3 py-2 border border-gray-300 rounded-md"
                       >
                         <option value="public">Public</option>
@@ -529,8 +530,8 @@ export default function SettingsPage() {
                       </select>
                     ) : (
                       <Switch 
-                        checked={value}
-                        onCheckedChange={(checked) => setPrivacySettings({...privacySettings, [key]: checked})}
+                        checked={Boolean(value)}
+                        onCheckedChange={(checked: boolean) => setPrivacySettings(prev => ({...prev, [key]: checked as any}))}
                       />
                     )}
                   </div>

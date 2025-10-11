@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { setAuthUser, getAuthToken } from "@/lib/auth";
 import { Github, Linkedin, Globe, User, GraduationCap, MapPin, Briefcase } from "lucide-react";
+import { API_BASE_URL } from '@/lib/api/base';
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function CompleteProfilePage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/complete-profile', {
+  const response = await fetch(`${API_BASE_URL}/auth/complete-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

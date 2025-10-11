@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setAuthToken, setAuthUser } from "@/lib/auth";
 import { Eye, EyeOff, Home } from "lucide-react";
+import { API_BASE_URL } from '@/lib/api/base';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function LoginPage() {
     const password = (form.elements.namedItem("password") as HTMLInputElement)?.value;
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
