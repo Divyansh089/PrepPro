@@ -29,12 +29,18 @@ function originIsAllowed(origin: string | undefined) {
 const corsOptions: cors.CorsOptionsDelegate = (req, callback) => {
   const origin = (req as any).headers?.origin as string | undefined;
   if (!origin) {
-    return callback(null, { origin: true, credentials: true });
+    return callback(null, { origin: true, credentials: true, methods: ['GET','HEAD','PUT','PATCH','POST','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] });
   }
   if (originIsAllowed(origin)) {
     const norm = origin.replace(/\/$/, '');
     const matched = rawOrigins.find(o => o === norm) || norm;
-    return callback(null, { origin: matched, credentials: true });
+    if (process.env.DEBUG_CORS === '1') {
+      console.log('[CORS] Matched origin:', matched, 'Incoming:', origin);
+    }
+    return callback(null, { origin: matched, credentials: true, methods: ['GET','HEAD','PUT','PATCH','POST','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] });
+  }
+  if (process.env.DEBUG_CORS === '1') {
+    console.warn('[CORS] Blocked origin:', origin, 'Allowed list:', rawOrigins);
   }
   return callback(null, { origin: false });
 };
