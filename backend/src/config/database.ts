@@ -5,16 +5,20 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri: string = process.env.MONGODB_URI;
-const options = {
-  tls: true,
-  tlsAllowInvalidCertificates: true,
-  tlsAllowInvalidHostnames: true,
+const isSrv = uri.startsWith('mongodb+srv://');
+const isLocal = uri.includes('localhost') || uri.includes('127.0.0.1');
+
+const options: any = {
   serverSelectionTimeoutMS: 10000,
   connectTimeoutMS: 30000,
   maxPoolSize: 10,
-  retryWrites: true,
-  retryReads: true,
 };
+
+if (!isLocal && !isSrv) {
+  options.tls = true;
+  options.tlsAllowInvalidCertificates = true;
+  options.tlsAllowInvalidHostnames = true;
+}
 
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
@@ -48,7 +52,7 @@ export async function getDatabase(): Promise<Db> {
 export async function testConnection(): Promise<boolean> {
   try {
     const client = await clientPromise;
-    await client.db('admin').command({ ping: 1 });
+    await client.db().command({ ping: 1 });
     console.log('✅ MongoDB connected successfully');
     return true;
   } catch (error) {
