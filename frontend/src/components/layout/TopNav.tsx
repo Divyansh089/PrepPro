@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Bell, Search, User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,13 @@ import { removeAuthToken, removeAuthUser } from "@/lib/auth";
 
 export default function TopNav() {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    router.push(`/practice?search=${encodeURIComponent(searchQuery.trim())}`);
+  };
 
   const handleLogout = () => {
     removeAuthToken();
@@ -35,13 +43,15 @@ export default function TopNav() {
             <span className="font-bold text-xl">PrepPro</span>
           </Link>
           
-          <div className="relative w-96">
+          <form onSubmit={handleSearchSubmit} className="relative w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search topics, companies, questions..." 
-              className="pl-10 bg-background"
+              className="pl-10 bg-background border-border focus:border-primary"
             />
-          </div>
+          </form>
         </div>
 
         <div className="flex items-center gap-4">
