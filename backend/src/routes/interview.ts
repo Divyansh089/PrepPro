@@ -15,12 +15,15 @@ import {
 } from '../controllers/interviewController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 
+import { validate } from '../middlewares/validateMiddleware';
+import { createSessionSchema, sendMessageSchema } from '../validations/interviewValidation';
+
 const router = express.Router();
 
 router.post('/profile', authMiddleware, saveProfile);
 router.get('/profile', authMiddleware, getProfile);
 
-router.post('/sessions', authMiddleware, createSession);
+router.post('/sessions', authMiddleware, validate(createSessionSchema), createSession);
 router.get('/sessions/:sessionId', authMiddleware, getSession);
 router.post('/sessions/:sessionId/start', authMiddleware, startSession);
 

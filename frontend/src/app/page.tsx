@@ -465,11 +465,11 @@ function Footer() {
             <h3 className="text-lg font-semibold mb-4">Support</h3>
             <ul className="space-y-3">
               {[
-                { name: "Help Center", href: "#" },
-                { name: "Contact Us", href: "#" },
-                { name: "Privacy Policy", href: "#" },
-                { name: "Terms of Service", href: "#" },
-                { name: "FAQ", href: "#" }
+                { name: "Help Center", href: "/settings" },
+                { name: "Contact Us", href: "/settings" },
+                { name: "Privacy Policy", href: "/settings" },
+                { name: "Terms of Service", href: "/settings" },
+                { name: "FAQ", href: "/settings" }
               ].map((link) => (
                 <li key={link.name}>
                   <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
