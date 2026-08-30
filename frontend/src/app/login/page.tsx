@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setAuthToken, setAuthUser } from "@/lib/auth";
 import { Eye, EyeOff, Home } from "lucide-react";
 import { API_BASE_URL } from '@/lib/api/base';
+import { loginSchema, LoginInput } from "@/lib/validations/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,38 +18,43 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  async function onSubmit(data: LoginInput) {
     setError("");
     setLoading(true);
 
-    const form = e.currentTarget as HTMLFormElement;
-    const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
-    const password = (form.elements.namedItem("password") as HTMLInputElement)?.value;
-
     try {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Login failed');
+        setError(result.error || 'Login failed');
         setLoading(false);
         return;
       }
 
-      // Store user data and token
-      setAuthToken(data.token);
-      setAuthUser(data.user);
+      setAuthToken(result.token);
+      setAuthUser(result.user);
 
-      // Check if profile is complete, redirect accordingly
-      if (data.user.isProfileComplete) {
+      if (result.user.isProfileComplete) {
         router.push("/dashboard");
       } else {
         router.push("/complete-profile");
@@ -62,7 +70,6 @@ export default function LoginPage() {
     <main className="min-h-screen flex bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Left Sidebar - Branding */}
       <div className="hidden lg:flex lg:w-[40%] bg-gradient-to-br from-[#6633FF] to-[#AA66FF] items-center justify-center p-12 relative overflow-hidden">
-        {/* Animated background elements */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#6633FF]/90 to-[#AA66FF]/90" />
         <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse" />
         <div className="absolute top-32 right-16 w-16 h-16 bg-white/5 rounded-full animate-bounce" />
@@ -90,7 +97,6 @@ export default function LoginPage() {
             </Button>
           </div>
           
-          {/* <h2 className="text-4xl font-bold mb-4">Welcome back!</h2> */}
           <p className="text-xl text-white/80 mb-8">Continue your journey to success</p>
           
           <div className="space-y-4 text-left">
@@ -124,7 +130,7 @@ export default function LoginPage() {
             <p className="text-gray-600 text-lg">Sign in to your account</p>
           </div>
 
-          {/* Error Message */}
+          {/* Server Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm">
               <p className="text-sm text-red-600 flex items-center gap-2">
@@ -136,18 +142,20 @@ export default function LoginPage() {
 
           {/* Login Form */}
           <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</label>
                 <Input 
                   id="email" 
-                  name="email" 
                   type="email" 
-                  required 
                   placeholder="Enter your email"
                   className="h-14 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-lg"
                   disabled={loading}
+                  {...register("email")}
                 />
+                {errors.email && (
+                  <p className="text-xs text-red-500 font-medium mt-1">{errors.email.message}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -155,12 +163,11 @@ export default function LoginPage() {
                 <div className="relative">
                   <Input 
                     id="password" 
-                    name="password" 
                     type={showPassword ? "text" : "password"}
-                    required 
                     placeholder="Enter your password"
                     className="h-14 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-lg pr-12"
                     disabled={loading}
+                    {...register("password")}
                   />
                   <button 
                     type="button" 
@@ -170,17 +177,10 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="text-xs text-red-500 font-medium mt-1">{errors.password.message}</p>
+                )}
               </div>
-
-              {/* <div className="flex justify-between items-center">
-                <label className="flex items-center gap-2 text-sm text-gray-600">
-                  <input type="checkbox" className="rounded border-gray-300 text-[#6633FF] focus:ring-[#6633FF]" />
-                  Remember me
-                </label>
-                <Link href="#" className="text-sm text-[#6633FF] hover:text-[#7744FF] font-medium transition-colors">
-                  Forgot Password?
-                </Link>
-              </div> */}
 
               <Button 
                 type="submit" 
@@ -207,4 +207,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
