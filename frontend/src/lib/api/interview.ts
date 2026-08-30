@@ -160,6 +160,23 @@ export const interviewSessionApi = {
 
     return response.json();
   },
+
+  // Submit candidate response
+  submitAnswer: async (sessionId: string, data: { content: string; code?: string; language?: string }) => {
+    const response = await fetch(`${API_BASE_URL}/interview/sessions/${sessionId}/answer`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const text = await response.text();
+    let json: any = null;
+    try { json = text ? JSON.parse(text) : null; } catch {}
+    if (!response.ok) {
+      const serverMsg = json?.error || json?.message;
+      throw new Error(serverMsg || `Failed to submit answer (${response.status})`);
+    }
+    return json;
+  },
 };
 
 // Questions API
