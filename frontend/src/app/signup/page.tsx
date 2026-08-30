@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setAuthToken, setAuthUser } from "@/lib/auth";
 import { Eye, EyeOff, Home } from "lucide-react";
 import { API_BASE_URL } from '@/lib/api/base';
+import { signupSchema, SignupInput } from "@/lib/validations/auth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,38 +18,47 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignupInput>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  async function onSubmit(data: SignupInput) {
     setError("");
     setLoading(true);
 
-    const form = e.currentTarget as HTMLFormElement;
-    const name = (form.elements.namedItem("name") as HTMLInputElement)?.value;
-    const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
-    const password = (form.elements.namedItem("password") as HTMLInputElement)?.value;
-
     try {
-  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        }),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Signup failed');
+        setError(result.error || 'Signup failed');
         setLoading(false);
         return;
       }
 
-      // Store user data and token
-      setAuthToken(data.token);
-      setAuthUser(data.user);
-
-      // Redirect to profile completion
+      setAuthToken(result.token);
+      setAuthUser(result.user);
       router.push("/complete-profile");
     } catch (err) {
       console.error('Signup error:', err);
@@ -59,7 +71,6 @@ export default function SignupPage() {
     <main className="min-h-screen flex bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Left Sidebar - Branding */}
       <div className="hidden lg:flex lg:w-[40%] bg-gradient-to-br from-[#6633FF] to-[#AA66FF] items-center justify-center p-12 relative overflow-hidden">
-        {/* Animated background elements */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#6633FF]/90 to-[#AA66FF]/90" />
         <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse" />
         <div className="absolute top-32 right-16 w-16 h-16 bg-white/5 rounded-full animate-bounce" />
@@ -121,7 +132,7 @@ export default function SignupPage() {
             <p className="text-gray-600 text-lg">Start your placement prep journey</p>
           </div>
 
-          {/* Error Message */}
+          {/* Server Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm">
               <p className="text-sm text-red-600 flex items-center gap-2">
@@ -133,57 +144,77 @@ export default function SignupPage() {
 
           {/* Signup Form */}
           <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <div className="space-y-1">
                 <label htmlFor="name" className="text-sm font-semibold text-gray-700">Full Name</label>
                 <Input 
                   id="name" 
-                  name="name" 
                   type="text" 
                   placeholder="Enter your full name"
-                  className="h-14 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-lg"
+                  className="h-12 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-base"
                   disabled={loading}
+                  {...register("name")}
                 />
+                {errors.name && (
+                  <p className="text-xs text-red-500 font-medium">{errors.name.message}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</label>
                 <Input 
                   id="email" 
-                  name="email" 
                   type="email" 
-                  required 
                   placeholder="Enter your email"
-                  className="h-14 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-lg"
+                  className="h-12 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-base"
                   disabled={loading}
+                  {...register("email")}
                 />
+                {errors.email && (
+                  <p className="text-xs text-red-500 font-medium">{errors.email.message}</p>
+                )}
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</label>
                 <div className="relative">
                   <Input 
                     id="password" 
-                    name="password" 
                     type={showPassword ? "text" : "password"}
-                    required 
                     placeholder="Create a strong password"
-                    className="h-14 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-lg pr-12"
+                    className="h-12 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-base pr-12"
                     disabled={loading}
-                    minLength={6}
+                    {...register("password")}
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showPassword ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">Must be at least 6 characters long</p>
+                {errors.password && (
+                  <p className="text-xs text-red-500 font-medium">{errors.password.message}</p>
+                )}
               </div>
 
-              <div className="flex items-start gap-2">
+              <div className="space-y-1">
+                <label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirm Password</label>
+                <Input 
+                  id="confirmPassword" 
+                  type="password"
+                  placeholder="Confirm your password"
+                  className="h-12 border-2 border-gray-200 bg-gray-50 focus:border-[#6633FF] focus:ring-4 focus:ring-[#6633FF]/10 focus:bg-white transition-all duration-200 text-base"
+                  disabled={loading}
+                  {...register("confirmPassword")}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-500 font-medium">{errors.confirmPassword.message}</p>
+                )}
+              </div>
+
+              <div className="flex items-start gap-2 pt-2">
                 <input 
                   type="checkbox" 
                   id="terms" 
@@ -191,7 +222,7 @@ export default function SignupPage() {
                   className="mt-1 rounded border-gray-300 text-[#6633FF] focus:ring-[#6633FF]" 
                 />
                 <label htmlFor="terms" className="text-xs text-gray-600">
-                  I agree to the <Link href="#" className="text-[#6633FF] hover:underline">Terms of Service</Link> and <Link href="#" className="text-[#6633FF] hover:underline">Privacy Policy</Link>
+                  I agree to PrepPro's Terms of Service and Privacy Policy
                 </label>
               </div>
 
@@ -220,4 +251,3 @@ export default function SignupPage() {
     </main>
   );
 }
-
