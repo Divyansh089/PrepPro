@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { setAuthUser, getAuthToken } from "@/lib/auth";
 import { Github, Linkedin, Globe, User, GraduationCap, MapPin, Briefcase } from "lucide-react";
-import { API_BASE_URL } from '@/lib/api/base';
+import { graphqlRequest } from '@/lib/api/base';
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -48,34 +48,30 @@ export default function CompleteProfilePage() {
         return;
       }
 
-  const response = await fetch(`${API_BASE_URL}/auth/complete-profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          gradYear: formData.gradYear ? parseInt(formData.gradYear) : undefined,
-        }),
+      const dataResult = await graphqlRequest(`
+        mutation CompleteProfile($name: String, $bio: String, $college: String, $gradYear: String, $targetRole: String) {
+          updateProfile(name: $name, bio: $bio, college: $college, gradYear: $gradYear, targetRole: $targetRole) {
+            id
+            name
+            bio
+            college
+            gradYear
+            targetRole
+          }
+        }
+      `, {
+        name: formData.name,
+        bio: formData.bio,
+        college: formData.college,
+        gradYear: formData.gradYear,
+        targetRole: formData.targetRole,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Profile completion failed');
-        setLoading(false);
-        return;
-      }
-
-      // Update user data in localStorage
-      setAuthUser(data.user);
-
-      // Redirect to dashboard
+      setAuthUser({ ...dataResult.updateProfile, isProfileComplete: true });
       router.push("/dashboard");
-    } catch (err) {
+    } catch (err: any) {
       console.error('Profile completion error:', err);
-      setError('Network error. Please try again.');
+      setError(err?.message || 'Profile completion failed via GraphQL.');
       setLoading(false);
     }
   }
