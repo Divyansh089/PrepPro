@@ -189,7 +189,7 @@ export default function PracticePage() {
           .replace(/\s+/g, ' ')
           .trim();
       const seen = new Set<string>();
-      const unique = generatedQuestions.filter((q) => {
+      const unique = generatedQuestions.filter((q: any) => {
         const key = normalizePromptText(q.prompt);
         if (seen.has(key)) return false;
         seen.add(key);
@@ -197,7 +197,7 @@ export default function PracticePage() {
       });
 
       setSessionId(newSessionId);
-      setQuestions(unique.sort((a, b) => a.order - b.order));
+      setQuestions(unique.sort((a: any, b: any) => a.order - b.order));
       setAnswers({});
       setSessionStatus(status === 'completed' ? 'completed' : 'active');
       setEvaluation(null);
