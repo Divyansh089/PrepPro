@@ -35,7 +35,7 @@ import {
   Calendar,
   AlertTriangle
 } from "lucide-react";
-import { API_BASE_URL } from '@/lib/api/base';
+import { graphqlRequest } from '@/lib/api/base';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -128,25 +128,29 @@ export default function SettingsPage() {
   const handleProfileUpdate = async () => {
     setSaving(true);
     try {
-      const token = getAuthToken();
-  const response = await fetch(`${API_BASE_URL}/auth/complete-profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...profileData,
-          gradYear: profileData.gradYear ? parseInt(profileData.gradYear) : undefined,
-        }),
+      const dataResult = await graphqlRequest(`
+        mutation UpdateProfile($name: String, $bio: String, $college: String, $gradYear: String, $targetRole: String) {
+          updateProfile(name: $name, bio: $bio, college: $college, gradYear: $gradYear, targetRole: $targetRole) {
+            id
+            name
+            bio
+            college
+            gradYear
+            targetRole
+          }
+        }
+      `, {
+        name: profileData.name,
+        bio: profileData.bio,
+        college: profileData.college,
+        gradYear: profileData.gradYear,
+        targetRole: profileData.targetRole,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        // Update localStorage
-        localStorage.setItem('authUser', JSON.stringify(data.user));
-      }
+      const updatedUser = { ...user, ...dataResult.updateProfile };
+      setUser(updatedUser);
+      localStorage.setItem('authUser', JSON.stringify(updatedUser));
+      alert("Profile updated successfully via GraphQL!");
     } catch (error) {
       console.error('Error updating profile:', error);
     } finally {
@@ -162,26 +166,19 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      const token = getAuthToken();
-  const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        }),
+      await graphqlRequest(`
+        mutation ChangePassword($currentPassword: String!, $newPassword: String!) {
+          changePassword(currentPassword: $currentPassword, newPassword: $newPassword) {
+            success
+          }
+        }
+      `, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
       });
-
-      if (response.ok) {
-        setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-        alert("Password updated successfully");
-      } else {
-        const data = await response.json();
-        alert(data.error || "Failed to update password");
-      }
+      
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      alert("Password updated successfully via GraphQL!");
     } catch (error) {
       console.error('Error updating password:', error);
       alert("Failed to update password");
