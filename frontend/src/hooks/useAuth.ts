@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { API_BASE_URL } from '@/lib/api/base';
+import { graphqlRequest } from '@/lib/api/base';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -26,32 +26,27 @@ export function useAuth() {
           return;
         }
 
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('authUser');
-            router.push('/login');
-            return;
+        const data = await graphqlRequest(`
+          query GetMe {
+            me {
+              id
+              email
+              name
+              avatar
+              targetRole
+            }
           }
-          throw new Error('Failed to fetch user data');
-        }
+        `);
 
-        const data = await response.json();
-        const userData = data.user;
-        
-        setUser(userData);
-
-        // Check if profile is complete, redirect if not
-        if (!userData.isProfileComplete) {
-          router.push('/complete-profile');
+        if (!data.me) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authUser');
+          router.push('/login');
           return;
         }
+
+        const userData = { ...data.me, isProfileComplete: true };
+        setUser(userData);
       } catch (error) {
         console.error('Error checking auth:', error);
         localStorage.removeItem('authToken');
