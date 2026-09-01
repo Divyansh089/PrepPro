@@ -1,5 +1,21 @@
-// Shared API base URL for frontend code
-// Normalize env value and ensure it ends with /api
-const RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-const TRIMMED = RAW.replace(/\/+$/, '');
-export const API_BASE_URL = /\/api$/i.test(TRIMMED) ? TRIMMED : `${TRIMMED}/api`;
+// Shared GraphQL client helper for frontend
+export const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:5000/graphql';
+
+export async function graphqlRequest<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+  const res = await fetch(GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const json = await res.json();
+  if (json.errors && json.errors.length > 0) {
+    throw new Error(json.errors[0].message || 'GraphQL Request Failed');
+  }
+
+  return json.data;
+}
