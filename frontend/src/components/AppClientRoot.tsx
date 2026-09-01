@@ -2,20 +2,19 @@
 
 import RouteTransition from "@/components/RouteTransition";
 import { PropsWithChildren, useEffect } from "react";
-import { API_BASE_URL } from '@/lib/api/base';
+import { GRAPHQL_URL } from '@/lib/api/base';
 
 export default function AppClientRoot({ children }: PropsWithChildren) {
   useEffect(() => {
-    // Client-side diagnostics for API base and health
+    // Client-side diagnostics for GraphQL endpoint and health
     // eslint-disable-next-line no-console
-    console.log('[PrepPro] NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
-    // eslint-disable-next-line no-console
-    console.log('[PrepPro] Resolved API_BASE_URL:', API_BASE_URL);
+    console.log('[PrepPro] Resolved GRAPHQL_URL:', GRAPHQL_URL);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7000);
 
-    fetch(`${API_BASE_URL.replace(/\/$/, '')}/health`, { signal: controller.signal })
+    const healthUrl = GRAPHQL_URL.replace(/\/graphql$/, '/health');
+    fetch(healthUrl, { signal: controller.signal })
       .then(async (res) => {
         // eslint-disable-next-line no-console
         console.log('[PrepPro] Backend /health status:', res.status);
@@ -26,11 +25,6 @@ export default function AppClientRoot({ children }: PropsWithChildren) {
         } catch (e) {
           // eslint-disable-next-line no-console
           console.warn('[PrepPro] Backend /health non-JSON response');
-        }
-        const allowOrigin = res.headers.get('access-control-allow-origin');
-        if (allowOrigin) {
-          // eslint-disable-next-line no-console
-          console.log('[PrepPro] CORS allow-origin:', allowOrigin);
         }
       })
       .catch((err) => {
@@ -44,5 +38,3 @@ export default function AppClientRoot({ children }: PropsWithChildren) {
 
   return <RouteTransition>{children}</RouteTransition>;
 }
-
-
