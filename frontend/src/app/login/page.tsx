@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setAuthToken, setAuthUser } from "@/lib/auth";
 import { Eye, EyeOff, Home } from "lucide-react";
-import { API_BASE_URL } from '@/lib/api/base';
+import { graphqlRequest } from '@/lib/api/base';
 import { loginSchema, LoginInput } from "@/lib/validations/auth";
 
 export default function LoginPage() {
@@ -35,33 +35,27 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      const dataResult = await graphqlRequest(`
+        mutation Login($email: String!, $password: String!) {
+          login(email: $email, password: $password) {
+            token
+            user {
+              id
+              email
+              name
+              avatar
+            }
+          }
+        }
+      `, { email: data.email, password: data.password });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.error || 'Login failed');
-        setLoading(false);
-        return;
-      }
-
-      setAuthToken(result.token);
-      setAuthUser(result.user);
-
-      if (result.user.isProfileComplete) {
-        router.push("/dashboard");
-      } else {
-        router.push("/complete-profile");
-      }
-    } catch (err) {
+      const authData = dataResult.login;
+      setAuthToken(authData.token);
+      setAuthUser({ ...authData.user, isProfileComplete: true });
+      router.push("/dashboard");
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError('Network error. Please ensure backend server is running.');
+      setError(err?.message || 'Login failed via GraphQL.');
       setLoading(false);
     }
   }
