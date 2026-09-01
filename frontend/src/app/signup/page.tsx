@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setAuthToken, setAuthUser } from "@/lib/auth";
 import { Eye, EyeOff, Home } from "lucide-react";
-import { API_BASE_URL } from '@/lib/api/base';
+import { graphqlRequest } from '@/lib/api/base';
 import { signupSchema, SignupInput } from "@/lib/validations/auth";
 
 export default function SignupPage() {
@@ -37,32 +37,31 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
+      const dataResult = await graphqlRequest(`
+        mutation Signup($name: String!, $email: String!, $password: String!) {
+          signup(name: $name, email: $email, password: $password) {
+            token
+            user {
+              id
+              email
+              name
+              avatar
+            }
+          }
+        }
+      `, {
+        name: data.name,
+        email: data.email,
+        password: data.password,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.error || 'Signup failed');
-        setLoading(false);
-        return;
-      }
-
-      setAuthToken(result.token);
-      setAuthUser(result.user);
+      const authData = dataResult.signup;
+      setAuthToken(authData.token);
+      setAuthUser({ ...authData.user, isProfileComplete: true });
       router.push("/complete-profile");
-    } catch (err) {
+    } catch (err: any) {
       console.error('Signup error:', err);
-      setError('Network error. Please ensure backend server is running.');
+      setError(err?.message || 'Signup failed via GraphQL.');
       setLoading(false);
     }
   }
