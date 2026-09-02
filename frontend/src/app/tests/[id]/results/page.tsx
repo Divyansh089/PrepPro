@@ -38,8 +38,10 @@ import {
   Radar
 } from "recharts";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
-export default function TestResultsPage({ params }: { params: { id: string } }) {
+export default function TestResultsPage() {
+  const params = useParams();
   const [selectedTab, setSelectedTab] = useState("overview");
 
   // Mock result data

@@ -344,14 +344,14 @@ export default function TestsPage() {
           .replace(/\s+/g, ' ')
           .trim();
       const seen = new Set<string>();
-      const unique = response.questions.filter((q) => {
+      const unique = response.questions.filter((q: any) => {
         const key = normalizePromptText(q.prompt);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
 
-      const sortedQuestions = unique.sort((a, b) => a.order - b.order);
+      const sortedQuestions = unique.sort((a: any, b: any) => a.order - b.order);
 
       setSessionId(response.sessionId);
       setQuestions(sortedQuestions);

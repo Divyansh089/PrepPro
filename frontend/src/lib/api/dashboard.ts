@@ -1,25 +1,50 @@
-import { API_BASE_URL } from './base';
-
-const getAuthHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
-  };
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('authToken');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-};
+import { graphqlRequest } from './base';
 
 export const dashboardApi = {
-  async getSummary() {
-    const res = await fetch(`${API_BASE_URL}/dashboard/summary`, { headers: getAuthHeaders(), cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to load dashboard');
-    return res.json();
+  async getSummary(_arg?: any) {
+    const data = await graphqlRequest(`
+      query GetDashboardSummary {
+        dashboardSummary {
+          user {
+            id
+            name
+            email
+            avatar
+          }
+          stats {
+            rank
+            totalScore
+            testsCompleted
+            questionsSolved
+            studyHours
+            accuracy
+            avgTime
+          }
+          recentActivity
+        }
+      }
+    `);
+
+    return data.dashboardSummary;
   },
-  async getLeaderboard(limit = 20) {
-    const res = await fetch(`${API_BASE_URL}/dashboard/leaderboard?limit=${limit}`, { headers: getAuthHeaders(), cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to load leaderboard');
-    return res.json();
+
+  async getLeaderboard(limit: number = 50) {
+    const data = await graphqlRequest(`
+      query GetLeaderboard($limit: Int) {
+        leaderboard(limit: $limit) {
+          id
+          name
+          avatar
+          rank
+          totalScore
+          testsCompleted
+          accuracy
+          targetRole
+          college
+        }
+      }
+    `, { limit });
+
+    return { top: data.leaderboard };
   }
 };

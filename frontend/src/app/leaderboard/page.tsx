@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { testsApi } from "@/lib/api/tests";
 import { dashboardApi } from "@/lib/api/dashboard";
+import { useLeaderboardWebSocket } from "@/hooks/useLeaderboardWebSocket";
 
 type HistoryEntry = Awaited<ReturnType<typeof testsApi.getHistory>>["history"][number];
 const HISTORY_LIMIT = 12;
@@ -70,6 +71,7 @@ type DashboardSummary = {
 };
 
 export default function LeaderboardPage() {
+  const { onlineCount, liveLeaderboard, isConnected } = useLeaderboardWebSocket();
   const [timeframe, setTimeframe] = useState("weekly");
   const [category, setCategory] = useState("overall");
   const [selectedTab, setSelectedTab] = useState("global");
@@ -80,6 +82,12 @@ export default function LeaderboardPage() {
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+
+  useEffect(() => {
+    if (liveLeaderboard.length > 0) {
+      setLeaderboardEntries(liveLeaderboard as any);
+    }
+  }, [liveLeaderboard]);
 
   useEffect(() => {
     let isMounted = true;
@@ -284,9 +292,15 @@ export default function LeaderboardPage() {
         <section className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Leaderboard</h1>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-4xl font-bold">Leaderboard</h1>
+                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs px-2.5 py-1 font-semibold flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                  {isConnected ? `Live WebSockets • ${onlineCount} Online` : 'Offline Mode'}
+                </Badge>
+              </div>
               <p className="text-muted-foreground text-lg">
-                Compete with thousands of candidates worldwide
+                Compete with candidates worldwide with real-time rank updates
               </p>
             </div>
             <div className="flex items-center gap-3">
