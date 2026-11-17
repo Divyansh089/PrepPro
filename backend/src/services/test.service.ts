@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma';
 import { AppError } from '../utils/AppError';
 import * as aiService from './ai.service';
 import { addPoints } from './leaderboard.service';
+import { clearUserStats } from '../utils/cache';
 import { CreateTestInput, SubmitTestInput, ListTestsInput } from '../validators/test.validator';
 
 // ---------- Categories ----------
@@ -277,6 +278,7 @@ export async function submitTest(userId: string, testId: string, data: SubmitTes
   if (test.mode === 'ASSESSMENT') {
     await addPoints(userId, score);
   }
+  await clearUserStats(userId);
 
   return getTest(userId, testId);
 }

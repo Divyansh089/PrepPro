@@ -4,6 +4,7 @@ import { AppError } from '../utils/AppError';
 import { getInterviewerReply, scoreInterview, InterviewScores } from './ai.service';
 import { runCode } from './code.service';
 import { addPoints } from './leaderboard.service';
+import { clearUserStats } from '../utils/cache';
 import {
   CreateInterviewInput,
   SendMessageInput,
@@ -226,6 +227,7 @@ export async function endInterview(userId: string, interviewId: string) {
 
   // After the transaction, so Redis only changes once Postgres has the points
   await addPoints(userId, scores.overall);
+  await clearUserStats(userId);
 
   return ended;
 }

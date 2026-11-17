@@ -30,26 +30,3 @@ export const api = {
   patch: <T = any>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   delete: <T = any>(path: string) => request<T>('DELETE', path),
 };
-
-/**
- * @deprecated Old GraphQL helper. The backend no longer has /graphql, so this always fails.
- * Pages still using it are moved to `api` in their feature issues, and it is deleted in the cleanup issue.
- */
-export async function graphqlRequest<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-  const res = await fetch(API_URL.replace(/\/api$/, '/graphql'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  const json = await res.json();
-  if (json.errors && json.errors.length > 0) {
-    throw new Error(json.errors[0].message || 'GraphQL Request Failed');
-  }
-
-  return json.data;
-}

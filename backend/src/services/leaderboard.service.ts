@@ -83,6 +83,15 @@ async function getRank(userId: string) {
   };
 }
 
+async function getRankFromPostgres(userId: string) {
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { totalPoints: true } });
+  const points = me?.totalPoints ?? 0;
+  if (points === 0) return { rank: null, points };
+
+  const higher = await prisma.user.count({ where: { totalPoints: { gt: points } } });
+  return { rank: higher + 1, points };
+}
+
 // Used when Redis is down: the same data, straight from Postgres
 async function getLeaderboardFromPostgres(userId: string, limit: number) {
   const users = await prisma.user.findMany({
@@ -93,15 +102,18 @@ async function getLeaderboardFromPostgres(userId: string, limit: number) {
   });
 
   const top = users.map(({ totalPoints, ...user }, index) => ({ rank: index + 1, ...user, points: totalPoints }));
+  return { top, me: await getRankFromPostgres(userId) };
+}
 
-  const me = await prisma.user.findUnique({ where: { id: userId }, select: { totalPoints: true } });
-  const points = me?.totalPoints ?? 0;
-  let rank: number | null = null;
-  if (points > 0) {
-    rank = (await prisma.user.count({ where: { totalPoints: { gt: points } } })) + 1;
+// One user's rank, used by the dashboard
+export async function getUserRank(userId: string) {
+  try {
+    await ensureBuilt();
+    return await getRank(userId);
+  } catch (err: any) {
+    console.error('Redis rank failed, using Postgres:', err.message);
+    return getRankFromPostgres(userId);
   }
-
-  return { top, me: { rank, points } };
 }
 
 // GET /api/leaderboard
