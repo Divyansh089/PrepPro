@@ -6,7 +6,8 @@ import { authApi } from '@/lib/api/auth';
 import { AuthUser, getAuthToken, setAuthUser, removeAuthToken, removeAuthUser } from '@/lib/auth';
 
 // Loads the logged-in user from the backend.
-// Sends the user to /login if there is no valid token.
+// Sends the user to /login if there is no valid token,
+// and to /complete-profile if their profile is not finished yet.
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,12 @@ export function useAuth() {
       try {
         const me = await authApi.me();
         setAuthUser(me);
+
+        if (!me.isProfileComplete) {
+          router.push('/complete-profile');
+          return;
+        }
+
         setUser(me);
       } catch (error) {
         console.error('Error checking auth:', error);

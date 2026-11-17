@@ -1,199 +1,126 @@
-import { graphqlRequest } from './base';
+import { api } from './base';
 
-export type AssessmentTrack = 'soft-skills' | 'technical-skills';
-export type AssessmentTopic =
-  | 'quant'
-  | 'verbal'
-  | 'aptitude'
-  | 'coding'
-  | 'cloud'
-  | 'dbms'
-  | 'operating-systems'
-  | 'networks'
-  | 'system-design';
-export type AssessmentDifficulty = 'beginner' | 'intermediate' | 'advanced';
+export type TestMode = 'PRACTICE' | 'ASSESSMENT';
+export type Category =
+  | 'QUANT'
+  | 'VERBAL'
+  | 'APTITUDE'
+  | 'REASONING'
+  | 'CODING'
+  | 'DBMS'
+  | 'OS'
+  | 'NETWORKS'
+  | 'CLOUD'
+  | 'SYSTEM_DESIGN';
+export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
+export type QuestionType = 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'SHORT_TEXT';
 
-export type AssessmentQuestion = {
-  id: string;
-  prompt: string;
-  answerType: 'single-choice' | 'multiple-choice' | 'short-text';
-  options?: string[];
-  tags: string[];
-  estimatedTime: number;
-  order: number;
-  difficulty: AssessmentDifficulty;
+export type CategoryInfo = {
+  id: Category;
+  label: string;
+  group: 'Aptitude' | 'Technical';
 };
 
-export type AssessmentSummary = {
+export type TestQuestion = {
+  id: string;
+  order: number;
+  type: QuestionType;
+  text: string;
+  options: string[];
+  // Only present after the test is submitted
+  userAnswer?: string[];
+  isCorrect?: boolean;
+  correctAnswer?: string[];
+  explanation?: string;
+};
+
+export type Feedback = {
   strengths: string[];
-  opportunities: string[];
-  improvements: string[];
+  weaknesses: string[];
   suggestions: string[];
 };
 
-export type AssessmentResult = {
-  questionId: string;
-  prompt: string;
-  answerType: AssessmentQuestion['answerType'];
-  options?: string[];
-  userAnswer: string | string[];
-  correctAnswer: string | string[];
-  isCorrect: boolean;
-  explanation: string;
-  tags: string[];
-  order: number;
-};
-
-export type AssessmentEvaluation = {
-  sessionId: string;
-  track: AssessmentTrack;
-  topic: AssessmentTopic;
-  difficulty: AssessmentDifficulty;
-  accuracy: number;
+export type Test = {
+  id: string;
+  mode: TestMode;
+  category: Category;
+  difficulty: Difficulty;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  totalQuestions: number;
+  correctCount: number;
   score: number;
-  summary: AssessmentSummary;
-  results: AssessmentResult[];
-  createdAt: string;
+  feedback: Feedback | null;
+  startedAt: string;
+  completedAt: string | null;
+  questions: TestQuestion[];
 };
 
-export type AssessmentTrackDefinition = {
-  track: AssessmentTrack;
-  label: string;
-  description: string;
-  topics: Array<{
-    id: AssessmentTopic;
-    label: string;
-    description: string;
-    difficulties: AssessmentDifficulty[];
-  }>;
+export type TestSummary = Omit<Test, 'questions' | 'feedback'>;
+
+export type TestList = {
+  tests: TestSummary[];
+  page: number;
+  limit: number;
+  total: number;
 };
 
 export const testsApi = {
-  async getTracks(_arg?: any) {
-    const data = await graphqlRequest(`
-      query GetAssessmentTracks {
-        assessmentTracks {
-          id
-          title
-          description
-          durationMinutes
-          questionCount
-        }
-      }
-    `);
+  getCategories: () =>
+    api.get<{ categories: CategoryInfo[]; difficulties: Difficulty[] }>('/tests/categories'),
 
-    return {
-      tracks: [
-        {
-          track: 'technical-skills' as AssessmentTrack,
-          label: 'Technical Engineering Track',
-          description: 'Software Architecture, Data Structures, and Coding Assessment',
-          topics: [
-            { id: 'coding' as AssessmentTopic, label: 'Algorithms & Coding', description: 'Data Structures & Algorithmic Problem Solving', difficulties: ['beginner', 'intermediate', 'advanced'] as AssessmentDifficulty[] },
-            { id: 'system-design' as AssessmentTopic, label: 'System Design', description: 'Distributed Systems & Scalability', difficulties: ['intermediate', 'advanced'] as AssessmentDifficulty[] },
-          ],
-        },
-      ],
-    };
+  create: (data: { mode: TestMode; category: Category; difficulty: Difficulty; count: number }) =>
+    api.post<Test>('/tests', data),
+
+  list: (params: { mode?: TestMode; page?: number; limit?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.mode) query.set('mode', params.mode);
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    return api.get<TestList>(`/tests?${query.toString()}`);
   },
 
-  async generateSession(payload: {
-    track: AssessmentTrack;
-    topic: AssessmentTopic;
-    difficulty: AssessmentDifficulty;
-    count?: number;
-  }) {
-    const data = await graphqlRequest(`
-      mutation GenerateAssessment($trackId: String!) {
-        generateAssessmentSession(trackId: $trackId) {
-          id
-          trackId
-          questions {
-            id
-            text
-            options
-            category
-          }
-        }
-      }
-    `, { trackId: payload.track });
+  get: (id: string) => api.get<Test>(`/tests/${id}`),
 
-    const session = data.generateAssessmentSession;
+  submit: (id: string, answers: Array<{ questionId: string; answer: string[] }>) =>
+    api.post<Test>(`/tests/${id}/submit`, { answers }),
+
+  /**
+   * @deprecated Old shape, only kept for the insights and leaderboard pages
+   * until they are rewritten (dashboard/insights and leaderboard issues).
+   */
+  getHistory: async (limit = 20) => {
+    const { tests } = await testsApi.list({ limit: Math.min(limit, 50) });
     return {
-      sessionId: session.id,
-      track: payload.track,
-      topic: payload.topic,
-      difficulty: payload.difficulty,
-      status: 'active',
-      questions: session.questions.map((q: any, idx: number) => ({
-        id: q.id,
-        prompt: q.text,
-        answerType: 'single-choice' as const,
-        options: q.options,
-        tags: [q.category || 'Engineering'],
-        estimatedTime: 60,
-        order: idx + 1,
-        difficulty: payload.difficulty,
-      })),
+      history: tests
+        .filter((t) => t.status === 'COMPLETED')
+        .map((t) => ({
+          sessionId: t.id,
+          topic: t.category.toLowerCase(),
+          difficulty: t.difficulty,
+          score: t.score,
+          accuracy: t.totalQuestions ? t.correctCount / t.totalQuestions : 0,
+          createdAt: t.completedAt ?? t.startedAt,
+        })),
     };
   },
+};
 
-  async getSession(sessionId: string) {
-    return {
-      sessionId,
-      track: 'technical-skills' as AssessmentTrack,
-      topic: 'coding' as AssessmentTopic,
-      difficulty: 'intermediate' as AssessmentDifficulty,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      questions: [
-        {
-          id: 'q-1',
-          prompt: 'What is the worst-case time complexity of QuickSort?',
-          answerType: 'single-choice' as const,
-          options: ['O(N log N)', 'O(N^2)', 'O(N)', 'O(1)'],
-          tags: ['Algorithms'],
-          estimatedTime: 60,
-          order: 1,
-          difficulty: 'intermediate' as AssessmentDifficulty,
-        },
-      ],
-    };
-  },
+// Shared display helpers
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  EASY: 'Easy',
+  MEDIUM: 'Medium',
+  HARD: 'Hard',
+};
 
-  async submitSession(sessionId: string, answers: Array<{ questionId: string; answer: string | string[] }>) {
-    return {
-      sessionId,
-      track: 'technical-skills' as AssessmentTrack,
-      topic: 'coding' as AssessmentTopic,
-      difficulty: 'intermediate' as AssessmentDifficulty,
-      accuracy: 92,
-      score: 92,
-      summary: {
-        strengths: ['Great algorithmic efficiency'],
-        opportunities: ['Review low-level dynamic programming'],
-        improvements: ['Focus on space optimization'],
-        suggestions: ['Practice hard DP problems'],
-      },
-      results: [],
-      createdAt: new Date().toISOString(),
-    };
-  },
-
-  async getHistory(_limit?: any) {
-    return {
-      history: [
-        {
-          sessionId: 'assess-prev-1',
-          track: 'technical-skills' as AssessmentTrack,
-          topic: 'coding' as AssessmentTopic,
-          difficulty: 'intermediate' as AssessmentDifficulty,
-          score: 92,
-          accuracy: 92,
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    };
-  },
+export const CATEGORY_LABELS: Record<Category, string> = {
+  QUANT: 'Quantitative Aptitude',
+  VERBAL: 'Verbal Ability',
+  APTITUDE: 'Logical Aptitude',
+  REASONING: 'Reasoning & Puzzles',
+  CODING: 'Coding & DSA',
+  DBMS: 'Databases (DBMS)',
+  OS: 'Operating Systems',
+  NETWORKS: 'Computer Networks',
+  CLOUD: 'Cloud & DevOps',
+  SYSTEM_DESIGN: 'System Design',
 };
