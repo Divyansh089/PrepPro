@@ -1,0 +1,27 @@
+# Local databases for development
+# Start: docker compose up -d
+# Stop:  docker compose down
+services:
+  postgres:
+    image: postgres:16
+    container_name: preppro-postgres
+    environment:
+      POSTGRES_USER: preppro
+      POSTGRES_PASSWORD: preppro
+      POSTGRES_DB: preppro
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: preppro-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  postgres-data:
+  redis-data:
