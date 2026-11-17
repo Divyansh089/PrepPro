@@ -10,7 +10,8 @@ services:
       POSTGRES_PASSWORD: preppro
       POSTGRES_DB: preppro
     ports:
-      - "5432:5432"
+      # 5433 on your machine, so it doesn't clash with a locally installed Postgres on 5432
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
