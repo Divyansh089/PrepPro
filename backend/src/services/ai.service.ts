@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
-import { Category, Difficulty } from '@prisma/client';
+import { Category, Difficulty, Interview, InterviewMessage } from '@prisma/client';
 import { env } from '../config/env';
 
 // No key = no AI. Every function below then returns null and the caller uses a fallback.
@@ -161,4 +161,100 @@ Each point max 20 words.`;
   const result = feedbackSchema.safeParse(data);
 
   return result.success ? (result.data as Feedback) : null;
+}
+
+// ---------- Interview ----------
+
+const TYPE_LABELS = {
+  TECHNICAL: 'technical (coding, data structures and algorithms, CS fundamentals)',
+  BEHAVIORAL: 'behavioral (teamwork, conflicts, projects, motivation)',
+  SYSTEM_DESIGN: 'system design',
+  MIXED: 'mixed (technical and behavioral)',
+};
+
+function describeInterview(interview: Interview) {
+  const company = interview.company ? ` at ${interview.company}` : '';
+  return `a ${TYPE_LABELS[interview.type]} interview for a ${interview.level.toLowerCase()} ${interview.role} role${company}. The candidate codes in ${interview.language}.`;
+}
+
+// Turns the chat into plain text for the prompt
+function formatTranscript(messages: InterviewMessage[]) {
+  return messages
+    .map((m) => {
+      const who = m.sender === 'AI' ? 'Interviewer' : 'Candidate';
+      const code = m.code ? `\n[Code in ${m.language ?? 'unknown'}]\n${m.code}` : '';
+      return `${who}: ${m.content}${code}`;
+    })
+    .join('\n\n');
+}
+
+const replySchema = z.object({ reply: z.string().min(1) });
+
+// The interviewer's next message. With no messages yet, it writes the intro and the first question.
+export async function getInterviewerReply(interview: Interview, messages: InterviewMessage[]): Promise<string | null> {
+  const task =
+    messages.length === 0
+      ? 'Start the interview: greet the candidate in one sentence, then ask the first question.'
+      : `Here is the conversation so far:\n\n${formatTranscript(messages)}\n\nReply to the candidate's last message: react to it in 1-2 sentences (point out mistakes honestly), then ask the next question or a follow-up.`;
+
+  const prompt = `You are a friendly but honest interviewer taking ${describeInterview(interview)}
+
+${task}
+
+Rules:
+- Ask only one question at a time.
+- Keep the whole reply under 120 words.
+- For coding questions, give a small problem with an example input and output. The candidate can write and run code in an editor.
+- Do not give away full answers.
+
+Return a JSON object: { "reply": "your message" }`;
+
+  const data = await askForJson(prompt);
+  const result = replySchema.safeParse(data);
+
+  return result.success ? (result.data as { reply: string }).reply : null;
+}
+
+const scoreSchema = z.object({
+  overall: z.number().min(0).max(100),
+  technical: z.number().min(0).max(100),
+  communication: z.number().min(0).max(100),
+  problemSolving: z.number().min(0).max(100),
+  feedback: z.string().min(1),
+});
+
+export type InterviewScores = {
+  overall: number;
+  technical: number;
+  communication: number;
+  problemSolving: number;
+  feedback: string;
+};
+
+// Scores the whole interview from 0 to 100
+export async function scoreInterview(interview: Interview, messages: InterviewMessage[]): Promise<InterviewScores | null> {
+  const prompt = `You took ${describeInterview(interview)}
+
+Full transcript:
+
+${formatTranscript(messages)}
+
+Score the candidate honestly from 0 to 100. Short or empty answers must get low scores.
+Return a JSON object with:
+- "overall", "technical", "communication", "problemSolving": whole numbers from 0 to 100
+- "feedback": 3-4 sentences on what went well and what to improve`;
+
+  const data = await askForJson(prompt);
+  const result = scoreSchema.safeParse(data);
+
+  if (!result.success) return null;
+
+  const scores = result.data as InterviewScores;
+  return {
+    overall: Math.round(scores.overall),
+    technical: Math.round(scores.technical),
+    communication: Math.round(scores.communication),
+    problemSolving: Math.round(scores.problemSolving),
+    feedback: scores.feedback,
+  };
 }

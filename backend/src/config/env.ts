@@ -20,6 +20,6 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET as string,
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
-  judge0Url: process.env.JUDGE0_URL || '',
+  judge0Url: process.env.JUDGE0_URL || 'https://ce.judge0.com',
   judge0ApiKey: process.env.JUDGE0_API_KEY || '',
 };
