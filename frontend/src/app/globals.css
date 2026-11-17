@@ -2,6 +2,7 @@
 /* Updated: 2025-10-09T10:59:41.286Z */
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography"; /* "prose" styles for AI chat messages */
 
 @custom-variant dark (&:is(.dark *));
 
