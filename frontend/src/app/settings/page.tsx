@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuthToken, getAuthUser, removeAuthToken, removeAuthUser } from "@/lib/auth";
+import { getAuthToken, setAuthUser, removeAuthToken, removeAuthUser } from "@/lib/auth";
 import AppShell from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ import {
   Calendar,
   AlertTriangle
 } from "lucide-react";
-import { graphqlRequest } from '@/lib/api/base';
+import { authApi, userApi } from '@/lib/api/auth';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -51,14 +51,9 @@ export default function SettingsPage() {
     name: "",
     email: "",
     bio: "",
-    location: "",
-    company: "",
     college: "",
     gradYear: "",
     targetRole: "",
-    linkedin: "",
-    github: "",
-    portfolio: "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -90,69 +85,60 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    const checkAuth = () => {
-      const token = getAuthToken();
-      const userData = getAuthUser();
-      
-      if (!token || !userData) {
+    const loadUser = async () => {
+      if (!getAuthToken()) {
         router.push('/login');
         return;
       }
 
-      if (!userData.isProfileComplete) {
-        router.push('/complete-profile');
-        return;
-      }
+      try {
+        // Always load fresh data from the backend
+        const userData = await authApi.me();
+        setAuthUser(userData);
 
-      setUser(userData);
-      setProfileData({
-        name: userData.name || "",
-        email: userData.email || "",
-        bio: userData.bio || "",
-        location: userData.location || "",
-        company: userData.company || "",
-        college: userData.college || "",
-        gradYear: userData.gradYear || "",
-        targetRole: userData.targetRole || "",
-        linkedin: userData.linkedin || "",
-        github: userData.github || "",
-        portfolio: userData.portfolio || "",
-      });
-      
-      setLoading(false);
+        if (!userData.isProfileComplete) {
+          router.push('/complete-profile');
+          return;
+        }
+
+        setUser(userData);
+        setProfileData({
+          name: userData.name || "",
+          email: userData.email || "",
+          bio: userData.bio || "",
+          college: userData.college || "",
+          gradYear: userData.gradYear ? String(userData.gradYear) : "",
+          targetRole: userData.targetRole || "",
+        });
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading user:', error);
+        removeAuthToken();
+        removeAuthUser();
+        router.push('/login');
+      }
     };
 
-    checkAuth();
+    loadUser();
   }, [router]);
 
   const handleProfileUpdate = async () => {
     setSaving(true);
     try {
-      const dataResult = await graphqlRequest(`
-        mutation UpdateProfile($name: String, $bio: String, $college: String, $gradYear: String, $targetRole: String) {
-          updateProfile(name: $name, bio: $bio, college: $college, gradYear: $gradYear, targetRole: $targetRole) {
-            id
-            name
-            bio
-            college
-            gradYear
-            targetRole
-          }
-        }
-      `, {
+      const updatedUser = await userApi.updateProfile({
         name: profileData.name,
         bio: profileData.bio,
         college: profileData.college,
-        gradYear: profileData.gradYear,
+        gradYear: profileData.gradYear ? Number(profileData.gradYear) : null,
         targetRole: profileData.targetRole,
       });
 
-      const updatedUser = { ...user, ...dataResult.updateProfile };
       setUser(updatedUser);
-      localStorage.setItem('authUser', JSON.stringify(updatedUser));
-      alert("Profile updated successfully via GraphQL!");
-    } catch (error) {
+      setAuthUser(updatedUser);
+      alert("Profile updated successfully!");
+    } catch (error: any) {
       console.error('Error updating profile:', error);
+      alert(error?.message || "Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -164,24 +150,23 @@ export default function SettingsPage() {
       return;
     }
 
+    if (passwordData.newPassword.length < 6) {
+      alert("New password must be at least 6 characters");
+      return;
+    }
+
     setSaving(true);
     try {
-      await graphqlRequest(`
-        mutation ChangePassword($currentPassword: String!, $newPassword: String!) {
-          changePassword(currentPassword: $currentPassword, newPassword: $newPassword) {
-            success
-          }
-        }
-      `, {
-        currentPassword: passwordData.currentPassword,
+      await userApi.changePassword({
+        oldPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
-      
+
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      alert("Password updated successfully via GraphQL!");
-    } catch (error) {
+      alert("Password updated successfully!");
+    } catch (error: any) {
       console.error('Error updating password:', error);
-      alert("Failed to update password");
+      alert(error?.message || "Failed to update password");
     } finally {
       setSaving(false);
     }
@@ -264,32 +249,12 @@ export default function SettingsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input 
+                  <Input
                     id="email"
                     type="email"
                     value={profileData.email}
-                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                    placeholder="Enter your email"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input 
-                    id="location"
-                    value={profileData.location}
-                    onChange={(e) => setProfileData({...profileData, location: e.target.value})}
-                    placeholder="Enter your location"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input 
-                    id="company"
-                    value={profileData.company}
-                    onChange={(e) => setProfileData({...profileData, company: e.target.value})}
-                    placeholder="Enter your company"
+                    disabled
+                    title="Email cannot be changed"
                   />
                 </div>
 
@@ -324,38 +289,6 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin">LinkedIn Profile</Label>
-                  <Input 
-                    id="linkedin"
-                    type="url"
-                    value={profileData.linkedin}
-                    onChange={(e) => setProfileData({...profileData, linkedin: e.target.value})}
-                    placeholder="https://linkedin.com/in/yourprofile"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="github">GitHub Profile</Label>
-                  <Input 
-                    id="github"
-                    type="url"
-                    value={profileData.github}
-                    onChange={(e) => setProfileData({...profileData, github: e.target.value})}
-                    placeholder="https://github.com/yourusername"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="portfolio">Portfolio Website</Label>
-                  <Input 
-                    id="portfolio"
-                    type="url"
-                    value={profileData.portfolio}
-                    onChange={(e) => setProfileData({...profileData, portfolio: e.target.value})}
-                    placeholder="https://yourportfolio.com"
-                  />
-                </div>
               </div>
 
               <div className="space-y-2 mt-6">

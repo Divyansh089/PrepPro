@@ -1,56 +1,32 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { graphqlRequest } from '@/lib/api/base';
 import { useRouter } from 'next/navigation';
+import { authApi } from '@/lib/api/auth';
+import { AuthUser, getAuthToken, setAuthUser, removeAuthToken, removeAuthUser } from '@/lib/auth';
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-  isProfileComplete?: boolean;
-  [key: string]: any;
-}
-
+// Loads the logged-in user from the backend.
+// Sends the user to /login if there is no valid token.
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (!getAuthToken()) {
+        router.push('/login');
+        return;
+      }
+
       try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          router.push('/login');
-          return;
-        }
-
-        const data = await graphqlRequest(`
-          query GetMe {
-            me {
-              id
-              email
-              name
-              avatar
-              targetRole
-            }
-          }
-        `);
-
-        if (!data.me) {
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('authUser');
-          router.push('/login');
-          return;
-        }
-
-        const userData = { ...data.me, isProfileComplete: true };
-        setUser(userData);
+        const me = await authApi.me();
+        setAuthUser(me);
+        setUser(me);
       } catch (error) {
         console.error('Error checking auth:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('authUser');
+        removeAuthToken();
+        removeAuthUser();
         router.push('/login');
       } finally {
         setLoading(false);
@@ -61,8 +37,8 @@ export function useAuth() {
   }, [router]);
 
   const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('authUser');
+    removeAuthToken();
+    removeAuthUser();
     setUser(null);
     router.push('/login');
   };

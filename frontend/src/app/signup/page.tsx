@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setAuthToken, setAuthUser } from "@/lib/auth";
 import { Eye, EyeOff, Home } from "lucide-react";
-import { graphqlRequest } from '@/lib/api/base';
+import { authApi } from '@/lib/api/auth';
 import { signupSchema, SignupInput } from "@/lib/validations/auth";
 
 export default function SignupPage() {
@@ -37,31 +37,18 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const dataResult = await graphqlRequest(`
-        mutation Signup($name: String!, $email: String!, $password: String!) {
-          signup(name: $name, email: $email, password: $password) {
-            token
-            user {
-              id
-              email
-              name
-              avatar
-            }
-          }
-        }
-      `, {
+      const { token, user } = await authApi.signup({
         name: data.name,
         email: data.email,
         password: data.password,
       });
 
-      const authData = dataResult.signup;
-      setAuthToken(authData.token);
-      setAuthUser({ ...authData.user, isProfileComplete: true });
+      setAuthToken(token);
+      setAuthUser(user);
       router.push("/complete-profile");
     } catch (err: any) {
       console.error('Signup error:', err);
-      setError(err?.message || 'Signup failed via GraphQL.');
+      setError(err?.message || 'Signup failed.');
       setLoading(false);
     }
   }

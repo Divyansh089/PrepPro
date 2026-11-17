@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
+import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
 
 const app = express();
 
@@ -12,8 +14,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// API routes (added in the next issues)
-// app.use('/api/auth', authRoutes);
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
