@@ -1,14 +1,17 @@
-// Frontend-only auth utilities
+// The logged-in user, as returned by GET /api/auth/me
 export interface AuthUser {
   id: string;
+  name: string;
   email: string;
-  name?: string;
-  rank?: number;
-  totalScore?: number;
-  testsCompleted?: number;
-  questionsSolved?: number;
-  studyHours?: number;
-  accuracy?: number;
+  college: string | null;
+  gradYear: number | null;
+  targetRole: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  totalPoints: number;
+  createdAt: string;
+  updatedAt: string;
+  isProfileComplete: boolean;
 }
 
 // Client-side auth utilities
