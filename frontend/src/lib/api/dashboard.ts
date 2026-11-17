@@ -26,25 +26,5 @@ export const dashboardApi = {
     `);
 
     return data.dashboardSummary;
-  },
-
-  async getLeaderboard(limit: number = 50) {
-    const data = await graphqlRequest(`
-      query GetLeaderboard($limit: Int) {
-        leaderboard(limit: $limit) {
-          id
-          name
-          avatar
-          rank
-          totalScore
-          testsCompleted
-          accuracy
-          targetRole
-          college
-        }
-      }
-    `, { limit });
-
-    return { top: data.leaderboard };
   }
 };

@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma';
 import { AppError } from '../utils/AppError';
 import { getInterviewerReply, scoreInterview, InterviewScores } from './ai.service';
 import { runCode } from './code.service';
+import { addPoints } from './leaderboard.service';
 import {
   CreateInterviewInput,
   SendMessageInput,
@@ -196,7 +197,7 @@ export async function endInterview(userId: string, interviewId: string) {
     scores = (await scoreInterview(interview, messages)) ?? fallbackScores(answerCount);
   }
 
-  return prisma.$transaction(async (tx) => {
+  const ended = await prisma.$transaction(async (tx) => {
     // Only one request can move it out of IN_PROGRESS, so points are never added twice
     const { count } = await tx.interview.updateMany({
       where: { id: interviewId, status: 'IN_PROGRESS' },
@@ -222,4 +223,9 @@ export async function endInterview(userId: string, interviewId: string) {
 
     return tx.interview.findUnique({ where: { id: interviewId } });
   });
+
+  // After the transaction, so Redis only changes once Postgres has the points
+  await addPoints(userId, scores.overall);
+
+  return ended;
 }

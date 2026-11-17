@@ -2,6 +2,7 @@ import { Category, Difficulty, Prisma, Question } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { AppError } from '../utils/AppError';
 import * as aiService from './ai.service';
+import { addPoints } from './leaderboard.service';
 import { CreateTestInput, SubmitTestInput, ListTestsInput } from '../validators/test.validator';
 
 // ---------- Categories ----------
@@ -271,6 +272,11 @@ export async function submitTest(userId: string, testId: string, data: SubmitTes
       });
     }
   });
+
+  // After the transaction, so Redis only changes once Postgres has the points
+  if (test.mode === 'ASSESSMENT') {
+    await addPoints(userId, score);
+  }
 
   return getTest(userId, testId);
 }
