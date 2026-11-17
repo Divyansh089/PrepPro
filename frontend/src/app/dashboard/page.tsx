@@ -1,274 +1,149 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuthToken, getAuthUser } from "@/lib/auth";
+import Link from "next/link";
 import AppShell from "@/components/layout/AppShell";
+import PageLoader from "@/components/PageLoader";
+import StatsGrid from "@/components/dashboard/StatsGrid";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, TrendingUp, Clock, Users, CheckCircle2, Target, Zap } from "lucide-react";
-import { dashboardApi } from "@/lib/api/dashboard";
+import { BookOpen, ClipboardCheck, MessageSquare } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { dashboardApi, type ActivityItem, type Dashboard, type Insights } from "@/lib/api/dashboard";
+import { CATEGORY_LABELS, type Category } from "@/lib/api/tests";
+
+const ACTIVITY_LABELS = { PRACTICE: "Practice", ASSESSMENT: "Assessment", INTERVIEW: "Interview" };
+
+function activityTitle(item: ActivityItem) {
+  return item.type === "INTERVIEW" ? item.title : CATEGORY_LABELS[item.title as Category];
+}
+
+function activityLink(item: ActivityItem) {
+  return item.type === "INTERVIEW" ? `/interview/${item.id}` : `/tests/${item.id}/results`;
+}
+
+const QUICK_ACTIONS = [
+  { title: "Practice", text: "Untimed tests with explanations", href: "/practice", icon: BookOpen },
+  { title: "Assessment", text: "Scored tests that earn points", href: "/tests", icon: ClipboardCheck },
+  { title: "Mock interview", text: "Chat with an AI interviewer", href: "/interview", icon: MessageSquare },
+];
 
 export default function DashboardPage() {
-  const router = useRouter();
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<any>(null);
+  const { user, loading: authLoading } = useAuth();
+  const [stats, setStats] = useState<Dashboard | null>(null);
+  const [insights, setInsights] = useState<Insights | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const checkAuth = () => {
-      const token = getAuthToken();
-      const user = getAuthUser();
-      
-      if (!token || !user) {
-        router.push('/login');
-        return;
-      }
-
-      // Check if profile is complete, redirect if not
-      if (!user.isProfileComplete) {
-        router.push('/complete-profile');
-        return;
-      }
-    };
-
-    const load = async () => {
-      try {
-        checkAuth();
-        const data = await dashboardApi.getSummary();
-        setSummary(data);
-      } catch (e: any) {
-        setError(e?.message || 'Failed to load dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [router]);
-
-  const stats = summary ? [
-    { label: "Tests Taken", value: String(summary.stats?.testsCompleted ?? 0), icon: Target, color: "text-[#6633FF]" },
-    { label: "Questions Solved", value: String(summary.stats?.questionsSolved ?? 0), icon: CheckCircle2, color: "text-[#00CC66]" },
-    { label: "Study Hours", value: String(summary.stats?.studyHours ?? 0), icon: Clock, color: "text-[#AA66FF]" },
-    { label: "Rank", value: summary.stats?.rank ? `#${summary.stats.rank}` : "-", icon: TrendingUp, color: "text-[#6633FF]" },
-  ] : [];
-
-  const trendingTopics = [
-    "Dynamic Programming", "System Design", "React Hooks", "Database Indexing",
-    "Binary Trees", "REST APIs", "Docker", "AWS Services"
-  ];
-
-  const companies = [
-    { name: "Google", tests: 12, logo: "🔵" },
-    { name: "Amazon", tests: 18, logo: "🟠" },
-    { name: "Microsoft", tests: 15, logo: "🔷" },
-    { name: "Meta", tests: 10, logo: "🔵" },
-  ];
-
-  const recommendedTests = [
-    {
-      id: 1,
-      title: "Full Stack Development Assessment",
-      company: "Google",
-      difficulty: "Medium",
-      duration: "90 min",
-      topics: ["React", "Node.js", "MongoDB"],
-      attempted: 1240,
-    },
-    {
-      id: 2,
-      title: "Data Structures & Algorithms",
-      company: "Amazon",
-      difficulty: "Hard",
-      duration: "120 min",
-      topics: ["Arrays", "Trees", "DP"],
-      attempted: 2150,
-    },
-    {
-      id: 3,
-      title: "System Design Fundamentals",
-      company: "Microsoft",
-      difficulty: "Medium",
-      duration: "60 min",
-      topics: ["Scalability", "Databases", "Caching"],
-      attempted: 980,
-    },
-    {
-      id: 4,
-      title: "Frontend Development Challenge",
-      company: "Meta",
-      difficulty: "Easy",
-      duration: "45 min",
-      topics: ["JavaScript", "CSS", "React"],
-      attempted: 1680,
-    },
-  ];
-
-  if (loading) {
-    return (
-      <AppShell>
-        <div className="p-8 max-w-7xl">
-          <section className="mb-8">
-            <h1 className="text-3xl font-semibold">Loading your dashboard…</h1>
-          </section>
-        </div>
-      </AppShell>
-    );
-  }
+    if (!user) return;
+    Promise.all([dashboardApi.get(), dashboardApi.getInsights()])
+      .then(([dashboard, insightsData]) => {
+        setStats(dashboard);
+        setInsights(insightsData);
+      })
+      .catch((err) => setError(err.message));
+  }, [user]);
 
   if (error) {
     return (
       <AppShell>
-        <div className="p-8 max-w-7xl">
-          <section className="mb-8">
-            <h1 className="text-3xl font-semibold">Dashboard</h1>
-            <p className="text-red-500 mt-2">{error}</p>
-          </section>
+        <div className="p-8">
+          <p className="text-red-500">{error}</p>
         </div>
       </AppShell>
     );
   }
 
-  const userName = summary?.user?.name || getAuthUser()?.name || 'There';
+  if (authLoading || !user || !stats || !insights) {
+    return <PageLoader text="Loading your dashboard..." />;
+  }
 
   return (
     <AppShell>
-      <div className="p-8 max-w-7xl">
-        {/* Hero Section */}
-        <section className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Welcome back, {userName}!</h1>
-          <p className="text-muted-foreground text-lg">Your progress overview and next best steps</p>
-        </section>
+      <div className="p-8 max-w-7xl space-y-8">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">Welcome back, {user.name.split(" ")[0]}!</h1>
+          <p className="text-muted-foreground text-lg">Your progress so far and what to do next.</p>
+        </div>
 
-        {/* Stats Grid */}
-        <section className="grid grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={stat.label} className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">{stat.label}</span>
-                  <Icon className={`w-5 h-5 ${stat.color}`} />
-                </div>
-                <div className="text-3xl font-bold">{stat.value}</div>
+        <StatsGrid stats={stats} />
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {QUICK_ACTIONS.map((action) => (
+            <Link key={action.href} href={action.href}>
+              <Card className="p-5 h-full hover:border-primary transition-colors">
+                <action.icon className="w-5 h-5 text-primary mb-3" />
+                <h3 className="font-semibold">{action.title}</h3>
+                <p className="text-sm text-muted-foreground">{action.text}</p>
               </Card>
-            );
-          })}
-        </section>
+            </Link>
+          ))}
+        </div>
 
-        {/* Search & Filter Section
-        <section className="mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent activity */}
           <Card className="p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input 
-                  placeholder="Search for tests, topics, or companies..." 
-                  className="pl-11 h-12 text-lg bg-background"
-                />
-              </div>
-              <Button size="lg" className="h-12 px-8">
-                <Zap className="w-4 h-4 mr-2" />
-                Quick Match
-              </Button>
-            </div>
-
-        //     {/* Trending Topics */}
-        {/* //     <div className="mb-4">
-        //       <div className="flex items-center gap-2 mb-3">
-        //         <TrendingUp className="w-4 h-4 text-primary" />
-        //         <span className="text-sm font-semibold">Trending Topics</span>
-        //       </div>
-        //       <div className="flex flex-wrap gap-2">
-        //         {trendingTopics.map((topic) => ( */}
-        {/* //           <Badge key={topic} variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
-        //             {topic}
-        //           </Badge>
-        //         ))}
-        //       </div>
-        //     </div>
-        //   </Card>
-        // </section> */}
-
-        {/* Recent Activity */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Recent Activity</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="p-6">
-              <h3 className="font-semibold mb-3">Assessments</h3>
-              <div className="space-y-2 text-sm">
-                {(summary?.recent?.assessments || []).map((a: any) => (
-                  <div key={a.id} className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{a.topic}</span>
-                    <span className="font-medium">{a.score}</span>
-                  </div>
+            <h2 className="text-xl font-semibold mb-4">Recent activity</h2>
+            {stats.recentActivity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nothing yet. Finish a test or an interview and it shows up here.
+              </p>
+            ) : (
+              <div className="divide-y divide-border">
+                {stats.recentActivity.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={activityLink(item)}
+                    className="flex items-center justify-between py-3 hover:text-primary"
+                  >
+                    <div>
+                      <p className="font-medium">{activityTitle(item)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ACTIVITY_LABELS[item.type]} · {new Date(item.completedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{item.score}%</Badge>
+                  </Link>
                 ))}
-                {(!summary?.recent?.assessments || summary.recent.assessments.length === 0) && (
-                  <p className="text-muted-foreground">No completed assessments yet</p>
-                )}
               </div>
-            </Card>
-            <Card className="p-6">
-              <h3 className="font-semibold mb-3">Practice</h3>
-              <div className="space-y-2 text-sm">
-                {(summary?.recent?.practice || []).map((p: any) => (
-                  <div key={p.id} className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{p.topic}</span>
-                    <span className="font-medium">{p.score}</span>
-                  </div>
-                ))}
-                {(!summary?.recent?.practice || summary.recent.practice.length === 0) && (
-                  <p className="text-muted-foreground">No practice sessions yet</p>
-                )}
-              </div>
-            </Card>
-            <Card className="p-6">
-              <h3 className="font-semibold mb-3">Interviews</h3>
-              <div className="space-y-2 text-sm">
-                {(summary?.recent?.interviews || []).map((i: any) => (
-                  <div key={i.id} className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Session</span>
-                    <span className="font-medium">{i.overall}</span>
-                  </div>
-                ))}
-                {(!summary?.recent?.interviews || summary.recent.interviews.length === 0) && (
-                  <p className="text-muted-foreground">No interviews completed yet</p>
-                )}
-              </div>
-            </Card>
-          </div>
-        </section>
+            )}
+          </Card>
 
-        {/* Recommended Tests */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Recommended Tests</h2>
-            <Button variant="ghost">View All →</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {(summary?.latestTestScores ? Object.values(summary.latestTestScores).slice(0,4) : []).map((test: any, idx: number) => (
-              <Card key={test.id} className="p-6 hover:border-primary transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <Badge variant="outline" className="mb-2">{test.track}</Badge>
-                    <h3 className="font-semibold text-lg">{test.topic}</h3>
-                  </div>
-                  <Badge>{test.score}</Badge>
-                </div>
-                
-                <div className="text-sm text-muted-foreground mb-4">Updated {new Date(test.updatedAt || test.at).toLocaleString()}</div>
-                <Button className="w-full">Retake</Button>
-              </Card>
-            ))}
-          </div>
-        </section>
+          {/* Recommendations = weak categories */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-1">Recommended practice</h2>
+            <p className="text-sm text-muted-foreground mb-4">Categories where your accuracy is 50% or less.</p>
+            {insights.weaknesses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {insights.categories.length === 0
+                  ? "Take a few tests and we'll show the categories you should work on."
+                  : "No weak categories right now. Nice work! Try a harder difficulty or a new category."}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {insights.weaknesses.map((category) => {
+                  const accuracy = insights.categories.find((c) => c.category === category)?.accuracy ?? 0;
+                  return (
+                    <div key={category} className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{CATEGORY_LABELS[category]}</p>
+                        <p className="text-xs text-muted-foreground">{accuracy}% accuracy</p>
+                      </div>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/practice?category=${category}`}>Practice</Link>
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <Button variant="link" className="px-0 mt-4" asChild>
+              <Link href="/insights">See all insights →</Link>
+            </Button>
+          </Card>
+        </div>
       </div>
     </AppShell>
   );
 }
-
-

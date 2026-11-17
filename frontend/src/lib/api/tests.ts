@@ -83,26 +83,6 @@ export const testsApi = {
 
   submit: (id: string, answers: Array<{ questionId: string; answer: string[] }>) =>
     api.post<Test>(`/tests/${id}/submit`, { answers }),
-
-  /**
-   * @deprecated Old shape, only kept for the insights and leaderboard pages
-   * until they are rewritten (dashboard/insights and leaderboard issues).
-   */
-  getHistory: async (limit = 20) => {
-    const { tests } = await testsApi.list({ limit: Math.min(limit, 50) });
-    return {
-      history: tests
-        .filter((t) => t.status === 'COMPLETED')
-        .map((t) => ({
-          sessionId: t.id,
-          topic: t.category.toLowerCase(),
-          difficulty: t.difficulty,
-          score: t.score,
-          accuracy: t.totalQuestions ? t.correctCount / t.totalQuestions : 0,
-          createdAt: t.completedAt ?? t.startedAt,
-        })),
-    };
-  },
 };
 
 // Shared display helpers

@@ -5,18 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthUser, getAuthToken, setAuthUser, removeAuthToken, removeAuthUser } from "@/lib/auth";
 import { authApi } from "@/lib/api/auth";
+import { dashboardApi, type Dashboard } from "@/lib/api/dashboard";
+import StatsGrid from "@/components/dashboard/StatsGrid";
 import AppShell from "@/components/layout/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Trophy,
   Briefcase,
   Calendar,
   GraduationCap,
   Mail,
   Edit,
-  BookOpen,
 } from "lucide-react";
 
 function getInitials(name: string) {
@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Dashboard | null>(null);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -50,6 +51,9 @@ export default function ProfilePage() {
 
         setUser(me);
         setLoading(false);
+
+        // Stats are extra, so a failure here should not log the user out
+        dashboardApi.get().then(setStats).catch((err) => console.error('Could not load stats:', err));
       } catch (error) {
         console.error('Error loading profile:', error);
         removeAuthToken();
@@ -127,26 +131,11 @@ export default function ProfilePage() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Total Points</span>
-              <Trophy className="w-5 h-5 text-yellow-500" />
-            </div>
-            <div className="text-3xl font-bold">{user.totalPoints}</div>
-            <p className="text-xs text-muted-foreground mt-1">From assessments and mock interviews</p>
-          </Card>
-
-          <Card className="p-6 md:col-span-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Your Activity</span>
-              <BookOpen className="w-5 h-5 text-[#6633FF]" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Complete practice tests, assessments and mock interviews to see your stats and history here.
-            </p>
-          </Card>
-        </div>
+        {stats ? (
+          <StatsGrid stats={stats} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Loading stats...</p>
+        )}
       </div>
     </AppShell>
   );

@@ -7,6 +7,7 @@ import userRoutes from './routes/user.routes';
 import testRoutes from './routes/test.routes';
 import interviewRoutes from './routes/interview.routes';
 import leaderboardRoutes from './routes/leaderboard.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/interviews', interviewRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api', dashboardRoutes); // /api/dashboard and /api/insights
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });

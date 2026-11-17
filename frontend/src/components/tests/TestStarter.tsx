@@ -34,6 +34,11 @@ export default function TestStarter({ mode }: { mode: TestMode }) {
       .then((data) => {
         setCategories(data.categories);
         setDifficulties(data.difficulties);
+
+        // Links like /practice?category=DBMS pick that category for you
+        const fromUrl = new URLSearchParams(window.location.search).get("category");
+        const match = data.categories.find((c) => c.id === fromUrl);
+        if (match) setCategory(match.id);
       })
       .catch((err) => setError(err.message));
   }, []);
