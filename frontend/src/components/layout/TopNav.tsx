@@ -1,10 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Search, User, Settings, LogOut, ChevronDown } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,14 +15,6 @@ import { removeAuthToken, removeAuthUser } from "@/lib/auth";
 
 export default function TopNav() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    router.push(`/practice?search=${encodeURIComponent(searchQuery.trim())}`);
-  };
-
   const handleLogout = () => {
     removeAuthToken();
     removeAuthUser();
@@ -43,25 +32,9 @@ export default function TopNav() {
             <span className="font-bold text-xl">PrepPro</span>
           </Link>
           
-          <form onSubmit={handleSearchSubmit} className="relative w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search topics, companies, questions..." 
-              className="pl-10 bg-background border-border focus:border-primary"
-            />
-          </form>
         </div>
 
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs">
-              3
-            </Badge>
-          </Button>
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-3 py-2 hover:bg-accent">

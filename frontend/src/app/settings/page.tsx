@@ -9,32 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { 
-  User, 
-  Bell, 
-  Shield, 
-  Palette, 
-  Globe, 
-  Trash2, 
-  Download, 
-  Upload,
-  Save,
-  Eye,
-  EyeOff,
-  Mail,
-  Github,
-  Linkedin,
-  Globe as GlobeIcon,
-  MapPin,
-  Briefcase,
-  GraduationCap,
-  Calendar,
-  AlertTriangle
-} from "lucide-react";
+import { User, Shield, Save, Eye, EyeOff } from "lucide-react";
 import { authApi, userApi } from '@/lib/api/auth';
 
 export default function SettingsPage() {
@@ -60,28 +38,6 @@ export default function SettingsPage() {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-  });
-
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    testReminders: true,
-    achievementAlerts: true,
-    weeklyReports: true,
-    marketingEmails: false,
-  });
-
-  const [privacySettings, setPrivacySettings] = useState({
-    profileVisibility: "public",
-    showEmail: false,
-    showLocation: true,
-    showCompany: true,
-    showStats: true,
-  });
-
-  const [themeSettings, setThemeSettings] = useState({
-    theme: "system",
-    fontSize: "medium",
-    animations: true,
   });
 
   useEffect(() => {
@@ -178,13 +134,6 @@ export default function SettingsPage() {
     router.push('/login');
   };
 
-  const handleDeleteAccount = () => {
-    if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      // Implement account deletion
-      alert("Account deletion feature coming soon");
-    }
-  };
-
   if (loading) {
     return (
       <AppShell>
@@ -210,12 +159,9 @@ export default function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
@@ -382,144 +328,8 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </Card>
-
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4 text-red-600">Danger Zone</h3>
-              <div className="space-y-4">
-                <div className="p-4 border border-red-200 rounded-lg bg-red-50">
-                  <h4 className="font-semibold text-red-800 mb-2">Delete Account</h4>
-                  <p className="text-sm text-red-600 mb-4">
-                    Permanently delete your account and all associated data. This action cannot be undone.
-                  </p>
-                  <Button variant="destructive" onClick={handleDeleteAccount}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Account
-                  </Button>
-                </div>
-              </div>
-            </Card>
           </TabsContent>
 
-          {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Email Notifications</h3>
-              <div className="space-y-4">
-                {(Object.entries(notificationSettings) as [string, boolean][]).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-base">
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </Label>
-                      <p className="text-sm text-gray-600">
-                        {key === 'emailNotifications' && 'Receive general email notifications'}
-                        {key === 'testReminders' && 'Get reminded about upcoming tests'}
-                        {key === 'achievementAlerts' && 'Get notified about new achievements'}
-                        {key === 'weeklyReports' && 'Receive weekly progress reports'}
-                        {key === 'marketingEmails' && 'Receive promotional emails and updates'}
-                      </p>
-                    </div>
-                    <Switch 
-                      checked={Boolean(value)}
-                      onCheckedChange={(checked: boolean) => setNotificationSettings(prev => ({...prev, [key]: checked as any}))}
-                    />
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </TabsContent>
-
-          {/* Privacy Tab */}
-          <TabsContent value="privacy" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Profile Visibility</h3>
-              <div className="space-y-4">
-                {(Object.entries(privacySettings) as [string, string | boolean][]).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-base">
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </Label>
-                      <p className="text-sm text-gray-600">
-                        {key === 'profileVisibility' && 'Who can see your profile'}
-                        {key === 'showEmail' && 'Show email address on profile'}
-                        {key === 'showLocation' && 'Show location on profile'}
-                        {key === 'showCompany' && 'Show company on profile'}
-                        {key === 'showStats' && 'Show statistics on profile'}
-                      </p>
-                    </div>
-                    {key === 'profileVisibility' ? (
-                      <select 
-                        value={String(value)}
-                        onChange={(e) => setPrivacySettings(prev => ({...prev, [key]: e.target.value as any}))}
-                        className="px-3 py-2 border border-gray-300 rounded-md"
-                      >
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
-                        <option value="friends">Friends Only</option>
-                      </select>
-                    ) : (
-                      <Switch 
-                        checked={Boolean(value)}
-                        onCheckedChange={(checked: boolean) => setPrivacySettings(prev => ({...prev, [key]: checked as any}))}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </TabsContent>
-
-          {/* Appearance Tab */}
-          <TabsContent value="appearance" className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Theme Settings</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Theme</Label>
-                    <p className="text-sm text-gray-600">Choose your preferred theme</p>
-                  </div>
-                  <select 
-                    value={themeSettings.theme}
-                    onChange={(e) => setThemeSettings({...themeSettings, theme: e.target.value})}
-                    className="px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                    <option value="system">System</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Font Size</Label>
-                    <p className="text-sm text-gray-600">Adjust text size for better readability</p>
-                  </div>
-                  <select 
-                    value={themeSettings.fontSize}
-                    onChange={(e) => setThemeSettings({...themeSettings, fontSize: e.target.value})}
-                    className="px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Animations</Label>
-                    <p className="text-sm text-gray-600">Enable smooth animations and transitions</p>
-                  </div>
-                  <Switch 
-                    checked={themeSettings.animations}
-                    onCheckedChange={(checked) => setThemeSettings({...themeSettings, animations: checked})}
-                  />
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         {/* Logout Button */}
