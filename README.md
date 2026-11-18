@@ -125,6 +125,7 @@ The backend refuses to start if a required variable is missing.
 | backend | `npm run db:migrate` | Apply database migrations |
 | backend | `npm run db:seed` | Add the question bank (safe to run again) |
 | backend | `npm run db:studio` | Browse the database in Prisma Studio |
+| backend | `npm test` | Run the API tests (needs PostgreSQL + Redis running) |
 | frontend | `npm run dev` | Start the website |
 | frontend | `npm run build` / `npm start` | Production build / run it |
 | frontend | `npm run lint` | Run ESLint |
@@ -159,6 +160,27 @@ Errors always look like `{ "message": "..." }`. Validation errors also include `
 | Leaderboard | GET | `/leaderboard?limit=50` | `{ top: [{ rank, id, name, avatarUrl, college, points }], me: { rank, points } }` |
 
 Supported code languages: `javascript`, `python`, `java` (the class must be called `Main`) and `cpp`.
+
+## Tests and CI
+
+The backend has API tests in `backend/test/`. They use Node's built-in test runner. Each test starts the real app, calls it over HTTP and checks the answers. Gemini is turned off in tests, so the results are always the same. Every user a test creates is deleted afterwards.
+
+To run them, start Docker and seed the database, then run `npm test` in `backend/`. It is best to point them at a separate database so your own data stays clean:
+
+```bash
+cd backend
+docker exec preppro-postgres psql -U preppro -c "CREATE DATABASE preppro_test"
+export DATABASE_URL=postgresql://preppro:preppro@localhost:5433/preppro_test
+npx prisma migrate deploy && npx prisma db seed
+npm test
+```
+
+**CI** (`.github/workflows/ci.yml`) runs on GitHub Actions for every pull request and every push to `main`:
+
+| Job | Checks |
+|---|---|
+| Backend | `npm ci` → migrations apply on an empty PostgreSQL → seed → `tsc` build → API tests (with real PostgreSQL + Redis) |
+| Frontend | `npm ci` → ESLint → `next build` (includes the type check) |
 
 ## How a few things work
 

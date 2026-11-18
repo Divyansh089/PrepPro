@@ -1,0 +1,109 @@
+# Runs on every pull request and every push to main.
+# Two jobs run at the same time: backend and frontend. A PR should only be merged when both are green.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same PR cancels the old run that is still going
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (build + API tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    # A real PostgreSQL and Redis next to the job, like docker-compose.yml.
+    # The CI machine is empty, so the normal ports 5432 and 6379 are free here.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: preppro
+          POSTGRES_PASSWORD: preppro
+          POSTGRES_DB: preppro
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://preppro:preppro@localhost:5432/preppro
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-only-not-a-real-secret
+      # No Gemini key in CI: the tests use the built-in fallbacks
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Seed the question bank
+        run: npx prisma db seed
+
+      - name: Type-check and build
+        run: npm run build
+
+      - name: API tests
+        run: npm test
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+      NEXT_TELEMETRY_DISABLED: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check and build
+        run: npm run build
